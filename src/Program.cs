@@ -1,32 +1,34 @@
-//////////////////////////////////////
+﻿//////////////////////////////////////
 ////// Springer Book Downloader //////
 ////// Written by yak112 - 2020 //////
 //////////////////////////////////////
-
 using System;
 using System.Net;
 using System.ComponentModel;
 using System.Threading;
 using System.Linq;
 using System.IO;
-using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
-using DocumentFormat.OpenXml.Wordprocessing;
 
 namespace Springer_webscrap
 {
    class Downloader
     {
-        private volatile bool _completed;
+        private volatile bool _complete;
         private string DownloadFile(string pathToDownload, string filename, string documentURL)
         {
             string filePath = pathToDownload + "\\" +filename;
+            var di = new DirectoryInfo(pathToDownload);
+            if(!di.Exists)
+            {
+                di.Create();
+            }
 
             //Download the book list in a temporal file
             WebClient springerWeb = new WebClient();
             var link = new Uri(documentURL);
-            _completed = false;
+            _complete = false;
 
             springerWeb.DownloadFileCompleted += new AsyncCompletedEventHandler(Completed);
             springerWeb.DownloadProgressChanged += new DownloadProgressChangedEventHandler(DownloadProgress);
@@ -36,7 +38,7 @@ namespace Springer_webscrap
             return filePath;
         }
         public int ParseExcelAndDownload(string pathToDownload) {
-            string bookListURL = "https://resource-cms.springernature.com/springer-cms/rest/v1/content/17858272/data/v4"; //XLSX file with book list
+            string bookListURL = "https://resource-cms.springernature.com/springer-cms/rest/v1/content/17858272/data/v4";
             string bookCategory = "";
             string bookAuthor = "";
             string bookTitle = "";
@@ -60,8 +62,8 @@ namespace Springer_webscrap
                         {
                             if (c.DataType != null && c.DataType == CellValues.SharedString)
                             {
-                                var stringId = Convert.ToInt32(c.InnerText); // Do some error checking here
-                                if (field_num == 12) //Create a directory based on english package name
+                                var stringId = Convert.ToInt32(c.InnerText);
+                                if (field_num == 12) //Create a folder based on english package name
                                 {
                                     bookCategory = workbookPart.SharedStringTablePart.SharedStringTable.Elements<SharedStringItem>().ElementAt(stringId).InnerText;
                                     string pathString = System.IO.Path.Combine(pathToDownload, bookCategory);
@@ -75,7 +77,7 @@ namespace Springer_webscrap
                                 {
                                     bookTitle = workbookPart.SharedStringTablePart.SharedStringTable.Elements<SharedStringItem>().ElementAt(stringId).InnerText;
                                 }
-                                if (field_num == 19) //Gets book link and starts download
+                                if (field_num == 19) ////Gets book title
                                 {
                                     //PDF Book
                                     string bookLink = workbookPart.SharedStringTablePart.SharedStringTable.Elements<SharedStringItem>().ElementAt(stringId).InnerText;
@@ -121,29 +123,20 @@ namespace Springer_webscrap
             //Time to do some cleanup
             Console.WriteLine("Doing some cleanup. This may take a few moments, please wait...");
             var di = new DirectoryInfo(pathToDownload);
-            FileInfo[] tempFilesToRemove = di.GetFiles("*.tmp").ToArray();
-            foreach (FileInfo file in tempFilesToRemove)
-            {
-                file.Delete();
-            }
-            FileInfo[] zeroSizeFiles = di.GetFiles("*.*").Where(fi => fi.Length == 0).ToArray();
+            File.Delete(tempFile);
+            FileInfo[] zeroSizeFiles = di.GetFiles("*.*",SearchOption.AllDirectories).Where(fi => fi.Length == 0).ToArray();
             foreach (FileInfo file in zeroSizeFiles) {
                 file.Delete();
             }
 
-
             return row_num;
         }
-        public bool DownloadCompleted { get { return _completed; } }
+        public bool DownloadCompleted { get { return _complete; } }
 
         private void DownloadProgress(object sender, DownloadProgressChangedEventArgs e)
         {
             // Displays the operation identifier, and the transfer progress.
-            Console.WriteLine("{0}    downloaded {1} of {2} bytes. {3} % complete...",
-                (string)e.UserState,
-                e.BytesReceived,
-                e.TotalBytesToReceive,
-                e.ProgressPercentage);
+            Console.WriteLine("{0}    downloaded {1} of {2} bytes. {3} % complete...",(string)e.UserState,e.BytesReceived,e.TotalBytesToReceive,e.ProgressPercentage);
         }
 
         private void Completed(object sender, AsyncCompletedEventArgs e)
@@ -154,10 +147,10 @@ namespace Springer_webscrap
             }
             else
             {
-                Console.WriteLine("Download completed!");
+                Console.WriteLine("Download finished!");
             }
 
-            _completed = true;
+            _complete = true;
         }
     }
     class Program
@@ -179,14 +172,14 @@ namespace Springer_webscrap
                 Thread.Sleep(1000);
             if (result > 0)
             {
-                Console.WriteLine("----------------------------");
+                Console.WriteLine("\n\n----------------------------");
                 Console.WriteLine($"Downloaded {result} files.");
                 Console.WriteLine("Work has finished. Enjoy the books!"); 
                 Console.WriteLine("Thanks Springer!!");
                 Console.ReadKey();
             } else
             {
-                Console.WriteLine("Something has gone bad, retry again later.");
+                Console.WriteLine("Something has gone bad, please retry again later.");
                 Console.ReadKey();
             }
         }
