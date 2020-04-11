@@ -1,4 +1,9 @@
-﻿using System;
+//////////////////////////////////////
+////// Springer Book Downloader //////
+////// Written by yak112 - 2020 //////
+//////////////////////////////////////
+
+using System;
 using System.Net;
 using System.ComponentModel;
 using System.Threading;
@@ -18,7 +23,7 @@ namespace Springer_webscrap
         {
             string filePath = pathToDownload + "\\" +filename;
 
-            //Descargamos el archivo
+            //Download the book list in a temporal file
             WebClient springerWeb = new WebClient();
             var link = new Uri(documentURL);
             _completed = false;
@@ -31,7 +36,7 @@ namespace Springer_webscrap
             return filePath;
         }
         public int ParseExcelAndDownload(string pathToDownload) {
-            string bookListURL = "https://resource-cms.springernature.com/springer-cms/rest/v1/content/17858272/data/v4";
+            string bookListURL = "https://resource-cms.springernature.com/springer-cms/rest/v1/content/17858272/data/v4"; //XLSX file with book list
             string bookCategory = "";
             string bookAuthor = "";
             string bookTitle = "";
@@ -56,28 +61,28 @@ namespace Springer_webscrap
                             if (c.DataType != null && c.DataType == CellValues.SharedString)
                             {
                                 var stringId = Convert.ToInt32(c.InnerText); // Do some error checking here
-                                if (field_num == 12) //campo tipo
+                                if (field_num == 12) //Create a directory based on english package name
                                 {
                                     bookCategory = workbookPart.SharedStringTablePart.SharedStringTable.Elements<SharedStringItem>().ElementAt(stringId).InnerText;
                                     string pathString = System.IO.Path.Combine(pathToDownload, bookCategory);
                                     System.IO.Directory.CreateDirectory(pathString);
                                 }
-                                if (field_num == 2) //campo autor
+                                if (field_num == 2) //Gets book authors
                                 {
                                     bookAuthor = workbookPart.SharedStringTablePart.SharedStringTable.Elements<SharedStringItem>().ElementAt(stringId).InnerText;
                                 }
-                                if (field_num == 1) //campo titulo
+                                if (field_num == 1) //Gets book title
                                 {
                                     bookTitle = workbookPart.SharedStringTablePart.SharedStringTable.Elements<SharedStringItem>().ElementAt(stringId).InnerText;
                                 }
-                                if (field_num == 19) //campo link
+                                if (field_num == 19) //Gets book link and starts download
                                 {
                                     //PDF Book
                                     string bookLink = workbookPart.SharedStringTablePart.SharedStringTable.Elements<SharedStringItem>().ElementAt(stringId).InnerText;
                                     string filename = "";
                                     string filePath = "";
 
-                                    //Recurrimos a HttpWebRequest para hacer las redirecciones y conseguir el enlace final para descargar los archivos
+                                    //There are some redirects in Springer webpage, create a HttpWebRequest to handle this redirects
                                     HttpWebRequest springerRequest = (HttpWebRequest)WebRequest.Create(bookLink);
                                     springerRequest.MaximumAutomaticRedirections = 3;
                                     springerRequest.AllowAutoRedirect = true;
@@ -164,7 +169,7 @@ namespace Springer_webscrap
             Console.Title = "Springer Textbook Downloader";
             Console.WriteLine("----------------------------");
             Console.WriteLine("Springer Textbook Downloader");
-            Console.WriteLine("Written in C# by yak112 2020");
+            Console.WriteLine("Coded by yak112 - 2020");
             Console.WriteLine("----------------------------");
             Console.WriteLine("Please type in the folder where you want to store the books:");
             string dest_path = Console.ReadLine();
